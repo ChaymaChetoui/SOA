@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat WebSocket</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      #messages {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      #message-input {
+        width: 300px;
+        padding: 10px;
+        margin-right: 10px;
+      }
+      #send-btn,
+      #history-btn {
+        padding: 10px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Chat WebSocket en temps réel</h2>
+
+    <div id="messages"></div>
+
+    <input type="text" id="message-input" placeholder="Tapez un message..." />
+    <button id="send-btn">Envoyer</button>
+    <button id="history-btn">Afficher l'historique</button>
+
+    <script>
+      // Se connecter au serveur WebSocket
+      const socket = new WebSocket("ws://localhost:8080");
+
+      // Tableau pour stocker l'historique des messages
+      let messageHistory = [];
+
+      // Afficher le message de connexion
+      socket.onopen = function () {
+        console.log("Connecté au serveur WebSocket");
+        document.getElementById("messages").innerHTML +=
+          "<p><i>Connecté au serveur WebSocket.</i></p>";
+      };
+
+      // Écouter les messages reçus du serveur
+      socket.onmessage = function (event) {
+        const message = JSON.parse(event.data);
+        console.log("Message reçu:", message);
+        if (message.chat_message) {
+          const chatMessage = message.chat_message;
+          messageHistory.push(chatMessage); // Ajouter le message à l'historique
+          displayMessage(chatMessage.content); // Afficher uniquement le contenu
+        }
+      };
+
+      // Gérer les erreurs de connexion WebSocket
+      socket.onerror = function (error) {
+        console.error("Erreur WebSocket:", error);
+        document.getElementById("messages").innerHTML +=
+          "<p><i>Erreur de connexion WebSocket.</i></p>";
+      };
+
+      // Gérer la fermeture de la connexion WebSocket
+      socket.onclose = function () {
+        console.log("Déconnecté du serveur WebSocket");
+        document.getElementById("messages").innerHTML +=
+          "<p><i>Déconnecté du serveur WebSocket.</i></p>";
+      };
+
+      // Fonction pour envoyer un message
+      function sendMessage() {
+        const messageInput = document.getElementById("message-input");
+        const content = messageInput.value;
+        if (content.trim() === "") {
+          return;
+        }
+
+        const message = {
+          chat_message: {
+            id: "msg_" + Date.now(),
+            room_id: "room1",
+            sender_id: "client1",
+            content: content,
+          },
+        };
+
+        // Envoyer le message via WebSocket
+        socket.send(JSON.stringify(message));
+        messageInput.value = ""; // Effacer le champ de saisie
+      }
+
+      // Afficher un message dans le chat (afficher uniquement le contenu)
+      function displayMessage(content) {
+        const messagesDiv = document.getElementById("messages");
+        const messageElement = document.createElement("p");
+        messageElement.textContent = content; // Afficher uniquement le contenu du message
+        messagesDiv.appendChild(messageElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Faire défiler vers le bas
+      }
+
+      // Fonction pour afficher l'historique des messages
+      function displayHistory() {
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.innerHTML = ""; // Effacer les messages actuels
+        messageHistory.forEach((message) => {
+          displayMessage(message.content); // Afficher uniquement le contenu de l'historique
+        });
+      }
+
+      // Ajouter un événement au bouton d'envoi
+      document
+        .getElementById("send-btn")
+        .addEventListener("click", sendMessage);
+
+      // Ajouter un événement au bouton d'affichage de l'historique
+      document
+        .getElementById("history-btn")
+        .addEventListener("click", displayHistory);
+
+      // Permettre l'envoi de message en appuyant sur la touche Enter
+      document
+        .getElementById("message-input")
+        .addEventListener("keypress", function (event) {
+          if (event.key === "Enter") {
+            sendMessage();
+          }
+        });
+    </script>
+  </body>
+</html>
